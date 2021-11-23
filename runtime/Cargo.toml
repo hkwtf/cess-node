@@ -20,6 +20,11 @@ features = ['derive', 'max-encoded-len',]
 package = 'parity-scale-codec'
 version = '2.2.0'
 
+[dependencies.scale-info]
+default-features = false
+features = ['derive']
+version = '1.0'
+
 [dependencies.frame-benchmarking]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -237,6 +242,12 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-10'
 version = '4.0.0-dev'
 
+[dependencies.pallet-bags-list]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-10'
+version = '4.0.0-dev'
+
 [dependencies.pallet-membership]
 default-features = false
 git = 'https://github.com/paritytech/substrate.git'
@@ -310,20 +321,37 @@ runtime-benchmarks = [
     'sp-runtime/runtime-benchmarks',
 ]
 std = [
+    "pallet-authority-discovery/std",
+    "pallet-authorship/std",
+    "pallet-bounties/std",
+    "pallet-collective/std",
+    "pallet-election-provider-multi-phase/std",
+    "pallet-im-online/std",
+    "pallet-membership/std",
+    "pallet-offences/std",
+    "pallet-scheduler/std",
+    "pallet-session/std",
+    "pallet-staking/std",
+    "pallet-treasury/std",
+    "sp-authority-discovery/std",
+    "sp-npos-elections/std",
+    "sp-staking/std",
     'codec/std',
     'frame-executive/std',
     'frame-support/std',
     'frame-system-rpc-runtime-api/std',
     'frame-system/std',
     'pallet-babe/std',
+    'pallet-bags-list/std',
     'pallet-balances/std',
     'pallet-grandpa/std',
     'pallet-randomness-collective-flip/std',
+    'pallet-sminer/std',
     'pallet-sudo/std',
     'pallet-timestamp/std',
     'pallet-transaction-payment-rpc-runtime-api/std',
     'pallet-transaction-payment/std',
-    'pallet-sminer/std',
+    'scale-info/std',
     'sp-api/std',
     'sp-block-builder/std',
     'sp-consensus-babe/std',
@@ -335,19 +363,4 @@ std = [
     'sp-std/std',
     'sp-transaction-pool/std',
     'sp-version/std',
-    "pallet-im-online/std",
-    "sp-authority-discovery/std",
-    "pallet-authority-discovery/std",
-    "pallet-authorship/std",
-    "pallet-session/std",
-    "pallet-offences/std",
-    "sp-npos-elections/std",
-    "pallet-staking/std",
-    "pallet-election-provider-multi-phase/std",
-    "pallet-membership/std",
-    "pallet-collective/std",
-    "pallet-treasury/std",
-    "pallet-bounties/std",
-    "sp-staking/std",
-    "pallet-scheduler/std",
 ]
