@@ -26,22 +26,26 @@ use sp_runtime::{
 };
 use sp_std::prelude::*;
 use codec::{Encode, Decode};
+use scale_info::TypeInfo;
 use frame_support::{dispatch::DispatchResult, transactional, PalletId};
 type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type AccountOf<T> = <T as frame_system::Config>::AccountId;
 
 /// The custom struct for storing info of storage miners.
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
-pub struct Mr<AccountId, Balance> {
+#[derive(PartialEq, Eq, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct Mr<T: pallet::Config> {
 	peerid: u64,
-	beneficiary: AccountId,
+	beneficiary: AccountOf<T>,
 	ip: u32,
-	collaterals: Balance,
-	earnings: Balance,
-	locked: Balance,
+	collaterals: BalanceOf<T>,
+	earnings: BalanceOf<T>,
+	locked: BalanceOf<T>,
 }
 
 /// The custom struct for storing index of segment, miner's current power and space.
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
+#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
 pub struct SegmentInfo {
 	segment_index: u64,
 	power: u128,
@@ -99,7 +103,7 @@ pub mod pallet {
 	/// The hashmap for info of storage miners.
 	#[pallet::storage]
 	#[pallet::getter(fn miner_items)]
-	pub(super) type MinerItems<T: Config> = StorageMap<_, Twox64Concat, T::AccountId, Mr<T::AccountId, BalanceOf<T>>, ValueQuery>;
+	pub(super) type MinerItems<T: Config> = StorageMap<_, Twox64Concat, AccountOf<T>, Mr<T>>;
 
 	/// The hashmap for checking registered or not.
 	#[pallet::storage]
@@ -153,7 +157,7 @@ pub mod pallet {
 			let peerid = cur_idx.checked_add(1).ok_or(Error::<T>::Overflow)?;
 			<MinerItems<T>>::insert(
 				&sender,
-				Mr::<T::AccountId, BalanceOf<T>> {
+				Mr::<T> {
 					peerid,
 					beneficiary,
 					ip,
@@ -182,7 +186,7 @@ pub mod pallet {
 		pub fn redeem(origin: OriginFor<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(<WalletMiners<T>>::contains_key(&sender), Error::<T>::UnregisteredAccountId);
-			let mi = MinerItems::<T>::get(&sender);
+			let mi = MinerItems::<T>::get(&sender).unwrap();
 			ensure!(mi.locked == BalanceOf::<T>::from(0 as u32), Error::<T>::LockedNotEmpty);
 			let deposit = mi.collaterals;
 			let _ = T::Currency::unreserve(&sender, deposit.clone());
@@ -197,8 +201,9 @@ pub mod pallet {
 		pub fn claim(origin: OriginFor<T>) -> DispatchResult {
 			let sender = ensure_signed(origin)?;
 			ensure!(<WalletMiners<T>>::contains_key(&sender), Error::<T>::UnregisteredAccountId);
-			ensure!(MinerItems::<T>::get(&sender).earnings != BalanceOf::<T>::from(0 as u32), Error::<T>::EarningsIsEmpty);
-			let deposit = MinerItems::<T>::get(&sender).earnings;
+			let mi = MinerItems::<T>::get(&sender).unwrap();
+			ensure!(mi.earnings != BalanceOf::<T>::from(0 as u32), Error::<T>::EarningsIsEmpty);
+			let deposit = mi.earnings;
 			let reward_pot = T::PalletId::get().into_account();
 			let _ = T::Currency::transfer(&reward_pot, &sender, deposit.clone(), AllowDeath);
 			Self::deposit_event(Event::<T>::Claimed(sender.clone(), deposit.clone()));
@@ -214,7 +219,7 @@ impl<T: Config> Pallet<T> {
 		if !<WalletMiners<T>>::contains_key(&aid) {
 			Error::<T>::UnregisteredAccountId;
 		}
-		let peerid = MinerItems::<T>::get(&aid).peerid;
+		let peerid = MinerItems::<T>::get(&aid).unwrap().peerid;
 		SegInfo::<T>::mutate(&aid, |s| (*s).segment_index += 1);
 		let segment_new_index = SegInfo::<T>::get(aid).segment_index;
 		(peerid, segment_new_index)
