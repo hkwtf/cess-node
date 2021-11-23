@@ -6,28 +6,25 @@ pub use pallet::*;
 mod benchmarking;
 pub mod weights;
 
-
+use scale_info::TypeInfo;
 use sp_runtime::{
 	RuntimeDebug,
 	traits::{AccountIdConversion, StaticLookup, Zero},
 };
 use sp_std::prelude::*;
-
 use codec::{Encode, Decode};
-
 use frame_support::{dispatch::DispatchResult, transactional, PalletId};
-
-
 pub use weights::WeightInfo;
 
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
-
+type AccountOf<T> = <T as frame_system::Config>::AccountId;
+type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 
 /// The custom struct for storing info of storage miners.
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
-pub struct FileInfo<AccountId,Balance,BlockNumber> {
-
-	owner: AccountId,
+#[derive(PartialEq, Eq, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct FileInfo<T: pallet::Config> {
+	owner: AccountOf<T>,
 	//file hash
 	filehash: Vec<u8>,
 	//file similarity hash
@@ -45,11 +42,11 @@ pub struct FileInfo<AccountId,Balance,BlockNumber> {
 
 	email: Vec<u8>,
 	//upload fee
-	uploadfee: Balance,
+	uploadfee: BalanceOf<T>,
 	//download fee
-	downloadfee: Balance,
+	downloadfee: BalanceOf<T>,
 	//survival time
-	deadline: BlockNumber,
+	deadline: BlockNumberOf<T>,
 }
 
 #[frame_support::pallet]
@@ -79,16 +76,15 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
 		//upload file event.
-		FileUpload(T::AccountId),
+		FileUpload(AccountOf<T>),
 		//update file event.
-		FileUpdate(T::AccountId),
+		FileUpdate(AccountOf<T>),
 
-		BuyFile(T::AccountId, BalanceOf<T>, Vec<u8>),
+		BuyFile(AccountOf<T>, BalanceOf<T>, Vec<u8>),
 
-		Purchased(T::AccountId, Vec<u8>),
+		Purchased(AccountOf<T>, Vec<u8>),
 	}
 	#[pallet::error]
 	pub enum Error<T> {
@@ -98,7 +94,7 @@ pub mod pallet {
 	}
 	#[pallet::storage]
 	#[pallet::getter(fn file)]
-	pub(super) type File<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, FileInfo<T::AccountId ,BalanceOf<T>, T::BlockNumber>, ValueQuery>;
+	pub(super) type File<T: Config> = StorageMap<_, Twox64Concat, Vec<u8>, FileInfo<T>>;
 
 	#[pallet::storage]
 	#[pallet::getter(fn invoice)]
@@ -135,7 +131,7 @@ pub mod pallet {
 			);
 			<File<T>>::insert(
 				fileid.clone(),
-				FileInfo::<T::AccountId, BalanceOf<T>,T::BlockNumber> {
+				FileInfo::<T> {
 					owner: sender.clone(),
 					filehash,
 					similarityhash,
@@ -157,13 +153,11 @@ pub mod pallet {
 		#[pallet::weight(T::WeightInfo::update())]
 		pub fn update(origin: OriginFor<T>, fileid: Vec<u8>, ispublic: u8, similarityhash: Vec<u8>) -> DispatchResult{
 			let sender = ensure_signed(origin)?;
+			let group_id = <File<T>>::get(fileid.clone()).unwrap();
 
-			let group_id = <File<T>>::get(fileid.clone());
-
-			
 			<File<T>>::insert(
 				fileid.clone(),
-				FileInfo::<T::AccountId, BalanceOf<T>,T::BlockNumber> {
+				FileInfo::<T> {
 					owner: group_id.owner,
 					filehash: group_id.filehash,
 					similarityhash: similarityhash,
@@ -188,7 +182,7 @@ pub mod pallet {
 		pub fn buyfile(origin: OriginFor<T>,fileid: Vec<u8>, address: Vec<u8>) -> DispatchResult{
 			let sender = ensure_signed(origin)?;
 
-			let group_id = <File<T>>::get(fileid.clone());
+			let group_id = <File<T>>::get(fileid.clone()).unwrap();
 
 			let mut invoice: Vec<u8> = Vec::new();
 			for i in &fileid {

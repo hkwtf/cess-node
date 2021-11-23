@@ -28,8 +28,8 @@ use sp_std::prelude::*;
 use codec::{Encode, Decode};
 use scale_info::TypeInfo;
 use frame_support::{dispatch::DispatchResult, transactional, PalletId};
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 type AccountOf<T> = <T as frame_system::Config>::AccountId;
+type BalanceOf<T> = <<T as pallet::Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
 
 /// The custom struct for storing info of storage miners.
 #[derive(PartialEq, Eq, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
@@ -45,7 +45,6 @@ pub struct Mr<T: pallet::Config> {
 
 /// The custom struct for storing index of segment, miner's current power and space.
 #[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
-#[scale_info(skip_type_params(T))]
 pub struct SegmentInfo {
 	segment_index: u64,
 	power: u128,
@@ -75,14 +74,13 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
 		/// A new account was set.
-		Registered(T::AccountId, BalanceOf<T>),
+		Registered(AccountOf<T>, BalanceOf<T>),
 		/// An account was redeemed.
-		Redeemed(T::AccountId, BalanceOf<T>),
+		Redeemed(AccountOf<T>, BalanceOf<T>),
 		/// An account was claimed.
-		Claimed(T::AccountId, BalanceOf<T>),
+		Claimed(AccountOf<T>, BalanceOf<T>),
 	}
 
 	/// Error for the sminer pallet.

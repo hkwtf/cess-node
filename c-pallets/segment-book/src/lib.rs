@@ -25,30 +25,34 @@ use frame_support::{
 	PalletId,
 	traits::{Currency, OnUnbalanced, ReservableCurrency, Get, Randomness, ExistenceRequirement::AllowDeath},
 };
-type BalanceOf<T> = <<T as Config>::Currency as Currency<<T as frame_system::Config>::AccountId>>::Balance;
+use scale_info::TypeInfo;
+
+type BlockNumberOf<T> = <T as frame_system::Config>::BlockNumber;
 
 /// The custom struct for storing info of proofs in VPA.
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
-pub struct ProofInfoVPA<BlockNumber> {
+#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ProofInfoVPA<T: pallet::Config> {
 	is_ready: bool,
 	//false for 8M segment, true for 512M segment
 	size_type: bool,
 	proof: Option<Vec<u8>>,
 	rand: u32,
-	block_num: Option<BlockNumber>,
+	block_num: Option<BlockNumberOf<T>>,
 }
 
 /// The custom struct for storing info of proofs in PPA.
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
-pub struct ProofInfoPPA<BlockNumber> {
+#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
+#[scale_info(skip_type_params(T))]
+pub struct ProofInfoPPA<T: pallet::Config> {
 	//false for 8M segment, true for 512M segment
 	size_type: bool,
 	proof: Option<Vec<u8>>,
-	block_num: Option<BlockNumber>,
+	block_num: Option<BlockNumberOf<T>>,
 }
 
 
-#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug)]
+#[derive(PartialEq, Eq, Default, Encode, Decode, Clone, RuntimeDebug, TypeInfo)]
 pub struct ParamInfo {
 	peer_id: u64,
 	segment_id: u64,
@@ -80,7 +84,6 @@ pub mod pallet {
 
 	#[pallet::event]
 	#[pallet::generate_deposit(pub(super) fn deposit_event)]
-	#[pallet::metadata(T::AccountId = "AccountId", BalanceOf<T> = "Balance")]
 	pub enum Event<T: Config> {
 		/// A series of params was generated.
 		ParamSet(u64, u64, u32),
@@ -111,8 +114,7 @@ pub mod pallet {
 		Twox64Concat,
 		//segment id
 		u64,
-		ProofInfoVPA<T::BlockNumber>,
-		ValueQuery,
+		ProofInfoVPA<T>,
 	>;
 
 	#[pallet::storage]
@@ -125,8 +127,7 @@ pub mod pallet {
 		Twox64Concat,
 		//segment id
 		u64,
-		ProofInfoPPA<T::BlockNumber>,
-		ValueQuery,
+		ProofInfoPPA<T>,
 	>;
 
 	#[pallet::storage]
@@ -178,10 +179,11 @@ pub mod pallet {
 			//-------------------here needs a check func.
 			ensure!(<VerPoolA<T>>::contains_key(&sender, segment_id), Error::<T>::NoIntentSubmitYet);
 			
-			VerPoolA::<T>::mutate(&sender, segment_id, |s| {
-				(*s).is_ready = true;
-				(*s).proof = Some(proof);
-				(*s).block_num = Some(<frame_system::Pallet<T>>::block_number());
+			VerPoolA::<T>::mutate(&sender, segment_id, |s_opt| {
+				let s = s_opt.as_mut().unwrap();
+				s.is_ready = true;
+				s.proof = Some(proof);
+				s.block_num = Some(<frame_system::Pallet<T>>::block_number());
 			});
 
 			Self::deposit_event(Event::<T>::VPASubmitted(peer_id, segment_id));
@@ -195,7 +197,7 @@ pub mod pallet {
 
 			ensure!(<VerPoolA<T>>::contains_key(&sender, segment_id), Error::<T>::NotExistInVPA);
 
-			let vpa = VerPoolA::<T>::get(&sender, segment_id);
+			let vpa = VerPoolA::<T>::get(&sender, segment_id).unwrap();
 
 			ensure!(vpa.is_ready, Error::<T>::NotReadyInVPA);
 			
