@@ -14,6 +14,12 @@ git = 'https://github.com/paritytech/substrate.git'
 tag = 'monthly-2021-10'
 version = '5.0.0-dev'
 
+[dependencies.sp-io]
+default-features = false
+git = 'https://github.com/paritytech/substrate.git'
+tag = 'monthly-2021-10'
+version = '4.0.0-dev'
+
 [dependencies.codec]
 default-features = false
 features = ['derive', 'max-encoded-len',]
@@ -333,6 +339,7 @@ std = [
     "pallet-session/std",
     "pallet-staking/std",
     "pallet-treasury/std",
+    "sp-io/std",
     "sp-authority-discovery/std",
     "sp-npos-elections/std",
     "sp-staking/std",
